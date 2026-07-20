@@ -34,7 +34,7 @@ SaaS **multi-tenant** para equipos de ventas. Automatiza el flujo del vendedor:
 2. **Row-Level Security activo:** cada usuario ve solo filas de su `tenant_id`. Toda query respeta esto.
 3. **Registrá eventos siempre:** cada acción relevante (investigación, cotización creada/editada/enviada, cambio de estado) escribe una fila en `evento`.
 4. **Trackeá costo de IA por tenant:** cada llamada al LLM registra tenant, tarea, tokens y costo estimado en `uso_ia`.
-5. **Abstraé el proveedor de IA:** toda llamada pasa por un módulo propio (ej. `lib/llm.ts` con `complete(task, input)`). Nunca llamar la API cruda desde la lógica de negocio. Objetivo: cambiar de modelo/proveedor sin tocar el resto.
+5. **Abstraé el proveedor de IA:** toda llamada pasa por un módulo propio (ej. `src/utilidades/llm.ts` con `complete(task, input)`). Nunca llamar la API cruda desde la lógica de negocio. Objetivo: cambiar de modelo/proveedor sin tocar el resto.
 6. **Monolito.** Sin microservicios, sin Kubernetes, sin base vectorial separada (usá pgvector en la misma Postgres).
 7. **RAG para el matching, siempre.** Nunca meter el catálogo completo en un prompt.
 
@@ -104,14 +104,34 @@ uso_ia              -- tracking de costo de IA por tenant
 
 Ir en orden. Las etapas 1–3 son el MVP demostrable.
 
-- **Etapa 0 — Terreno:** repo, Next.js + Supabase, deploy funcionando.
-- **Etapa 1 — Cimientos:** auth, RLS, modelo de datos base, subir catálogo (manual + CSV). *DoD: empresa A no ve datos de empresa B.*
-- **Etapa 2 — Motor de IA:** embeddings del catálogo, investigación de empresa, matching RAG. *DoD: metés una empresa real y devuelve productos relevantes con explicación.*
+- **✅ Etapa 0 — Terreno:** repo, Next.js + Supabase, deploy funcionando.
+- **✅ Etapa 1 — Cimientos:** auth, RLS, modelo de datos base, subir catálogo (manual + CSV). *DoD: empresa A no ve datos de empresa B.* — verificado en el navegador con dos tenants reales.
+- **Etapa 2 — Motor de IA:** embeddings del catálogo, investigación de empresa, matching RAG, **import de catálogo por PDF** (extracción de texto + modelo chico que estructura los productos, con pantalla de revisión antes de guardar — recién acá tiene sentido porque necesita `src/utilidades/llm.ts`). *DoD: metés una empresa real y devuelve productos relevantes con explicación.*
 - **Etapa 3 — Cotización editable ⭐:** generar desde el match, editar todo (precio, cantidad, items). *DoD: MVP demostrable. Validar con clientes antes de seguir.*
 - **Etapa 4 — PDF:** exportar cotización a PDF, guardar en Storage.
 - **Etapa 5 — Mini-CRM:** estados de prospecto, actividades (vía `evento`), recordatorios propios. *No reconstruir un CRM completo. No integrar Google Calendar aún.*
 - **Etapa 6 — Envío:** solo email para empezar. *WhatsApp/SMS quedan para cuando un cliente que paga los pida.*
 - **Etapa 7 — Panel admin:** conversión, efectividad por vendedor, y costo de IA por tenant (unit economics).
+
+---
+
+## Estado actual (post Etapa 1, 2026-07-20)
+
+**Deploy e infra:**
+- Repo en GitHub (`JoaquinKarawacki/LeadIA`), main deployado en Vercel: `https://leadia-gamma.vercel.app`. Push a `main` dispara deploy de producción automático (integración de Vercel con GitHub ya conectada).
+- Proyecto de Supabase: ref `acwbffvddwtwlxykiehv`, región `us-east-2`.
+- Gestor de paquetes: **pnpm**. CLI de Supabase pinneado como devDependency (`pnpm exec supabase ...`, ya linkeado al proyecto).
+- Estructura de carpetas en español salvo lo que Next.js exige literal: `src/`, `app/`, `public/` quedan así porque el framework los reconoce por nombre; el código propio vive en `src/utilidades/` (no `lib/`).
+
+**Auth y multi-tenancy (cómo está implementado, no solo el plan):**
+- Login con email + password vía Supabase Auth (se descartó magic link: rate limit de emails muy bajo en plan free). Rutas protegidas por `src/proxy.ts` (Next.js 16 renombró `middleware` → `proxy`; la función exportada debe llamarse literal `proxy`).
+- Tenants **aprovisionados por el dev**, no self-serve: `pnpm crear-tenant "<nombre organización>" <email> <contraseña>`. El script (`scripts/crear-tenant.ts`) usa `SUPABASE_SERVICE_ROLE_KEY`, corre solo local, nunca se deploya.
+- El `tenant_id` de la sesión viaja en el JWT (`auth.jwt() -> app_metadata ->> tenant_id`), seteado por el script de aprovisionamiento al crear el usuario (`auth.admin.createUser` con `app_metadata`). **Toda política de RLS nueva debe usar la función `public.tenant_id_actual()`** (definida en `supabase/migrations/20260720201807_cimientos.sql`) en vez de subconsultas a otras tablas con RLS — evita problemas de recursión.
+- `src/utilidades/supabase/tipos.ts` es **autogenerado** (`supabase gen types typescript --linked`) — no editar a mano, regenerar después de cada migración.
+
+**Modelo de datos: solo existen `organizacion`, `usuario` y `producto` hasta ahora** (migración `supabase/migrations/20260720201807_cimientos.sql`). El resto de la sección "Modelo de datos" de este archivo es el diseño objetivo, todavía no creado en la base — se van agregando tabla por tabla a medida que la etapa correspondiente las necesita (no todas de una, para no adelantar trabajo). `producto` tampoco tiene todavía la columna `embedding`: se agrega en la Etapa 2 junto con la extensión pgvector.
+
+Hay dos tenants de prueba cargados en la base (`demo@leadia.test` / `demo2@leadia.test`, contraseñas en el historial de este chat) — son solo para verificar aislamiento, se pueden borrar cuando se sume el primer cliente real.
 
 ---
 
