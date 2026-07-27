@@ -22,7 +22,7 @@ SaaS **multi-tenant** para equipos de ventas. Automatiza el flujo del vendedor:
 
 - **Framework:** Next.js (front + back en TypeScript).
 - **Base de datos / backend:** Supabase → Postgres, Auth, Row-Level Security, **pgvector**, Storage.
-- **IA:** modelos vía **API de inferencia por token** (open source vía Together/Groq/Fireworks/DeepInfra, o proveedores cerrados). Nunca hostear GPUs propias.
+- **IA:** modelos vía **Vercel AI Gateway** (una sola key para proveedores abiertos y cerrados, trackeo de costo incluido, cero markup sobre precio de lista). Nunca hostear GPUs propias. Detalle de la decisión y el setup en "Estado actual" más abajo.
 - **Deploy:** Vercel (o VPS barato).
 - **Tareas lentas** (investigación, PDF, envío): **workers asincrónicos / cola de trabajos**, nunca bloqueando la request del usuario.
 
@@ -106,7 +106,12 @@ Ir en orden. Las etapas 1–3 son el MVP demostrable.
 
 - **✅ Etapa 0 — Terreno:** repo, Next.js + Supabase, deploy funcionando.
 - **✅ Etapa 1 — Cimientos:** auth, RLS, modelo de datos base, subir catálogo (manual + CSV). *DoD: empresa A no ve datos de empresa B.* — verificado en el navegador con dos tenants reales.
-- **Etapa 2 — Motor de IA:** embeddings del catálogo, investigación de empresa, matching RAG, **import de catálogo por PDF** (extracción de texto + modelo chico que estructura los productos, con pantalla de revisión antes de guardar — recién acá tiene sentido porque necesita `src/utilidades/llm.ts`). *DoD: metés una empresa real y devuelve productos relevantes con explicación.*
+- **🔶 Etapa 2 — Motor de IA (en progreso):**
+  - ✅ `src/utilidades/llm.ts` (abstracción de IA vía Vercel AI Gateway) + embeddings del catálogo (pgvector, se generan solos al crear un producto manual o por CSV) + `uso_ia` (tracking de costo). Ver detalle en "Estado actual" más abajo.
+  - ⬜ Investigación de empresa (búsqueda web + resumen con modelo chico → `prospecto`).
+  - ⬜ Matching RAG (embedding del perfil de la empresa → top-K productos por similitud → explicación con LLM).
+  - ⬜ Import de catálogo por PDF (extracción de texto + modelo chico que estructura los productos, con pantalla de revisión antes de guardar).
+  - *DoD de la etapa: metés una empresa real y devuelve productos relevantes con explicación.*
 - **Etapa 3 — Cotización editable ⭐:** generar desde el match, editar todo (precio, cantidad, items). *DoD: MVP demostrable. Validar con clientes antes de seguir.*
 - **Etapa 4 — PDF:** exportar cotización a PDF, guardar en Storage.
 - **Etapa 5 — Mini-CRM:** estados de prospecto, actividades (vía `evento`), recordatorios propios. *No reconstruir un CRM completo. No integrar Google Calendar aún.*
@@ -115,7 +120,7 @@ Ir en orden. Las etapas 1–3 son el MVP demostrable.
 
 ---
 
-## Estado actual (post Etapa 1, 2026-07-20)
+## Estado actual (Etapa 2 en progreso, 2026-07-27)
 
 **Deploy e infra:**
 - Repo en GitHub (`JoaquinKarawacki/LeadIA`), main deployado en Vercel: `https://leadia-gamma.vercel.app`. Push a `main` dispara deploy de producción automático (integración de Vercel con GitHub ya conectada).
@@ -129,9 +134,16 @@ Ir en orden. Las etapas 1–3 son el MVP demostrable.
 - El `tenant_id` de la sesión viaja en el JWT (`auth.jwt() -> app_metadata ->> tenant_id`), seteado por el script de aprovisionamiento al crear el usuario (`auth.admin.createUser` con `app_metadata`). **Toda política de RLS nueva debe usar la función `public.tenant_id_actual()`** (definida en `supabase/migrations/20260720201807_cimientos.sql`) en vez de subconsultas a otras tablas con RLS — evita problemas de recursión.
 - `src/utilidades/supabase/tipos.ts` es **autogenerado** (`supabase gen types typescript --linked`) — no editar a mano, regenerar después de cada migración.
 
-**Modelo de datos: solo existen `organizacion`, `usuario` y `producto` hasta ahora** (migración `supabase/migrations/20260720201807_cimientos.sql`). El resto de la sección "Modelo de datos" de este archivo es el diseño objetivo, todavía no creado en la base — se van agregando tabla por tabla a medida que la etapa correspondiente las necesita (no todas de una, para no adelantar trabajo). `producto` tampoco tiene todavía la columna `embedding`: se agrega en la Etapa 2 junto con la extensión pgvector.
+**Modelo de datos: existen `organizacion`, `usuario`, `producto` y `uso_ia`** (migraciones `20260720201807_cimientos.sql` y `20260727031607_motor_ia_embeddings.sql`). El resto de la sección "Modelo de datos" de este archivo (`prospecto`, `cotizacion`, `cotizacion_item`, `evento`, `recordatorio`) es el diseño objetivo, todavía no creado en la base — se van agregando tabla por tabla a medida que la etapa correspondiente las necesita. `producto` ya tiene la columna `embedding` (pgvector, `vector(1536)`, sin índice ANN todavía — se agrega ivfflat/hnsw si el volumen del catálogo lo llega a justificar).
 
-Hay dos tenants de prueba cargados en la base (`demo@leadia.test` / `demo2@leadia.test`, contraseñas en el historial de este chat) — son solo para verificar aislamiento, se pueden borrar cuando se sume el primer cliente real.
+**Motor de IA (Etapa 2, cimientos ya construidos):**
+- Toda llamada a IA pasa por `src/utilidades/llm.ts`, que hoy expone `generarEmbeddings(tenantId, tarea, textos)`. Usa **Vercel AI Gateway** (paquete `ai`, modelos `"proveedor/modelo"` como string plana — sin SDK de proveedor específico, sin wrapper `gateway()`). Cada llamada registra tokens y costo estimado en `uso_ia`.
+- Modelo de embeddings elegido: `openai/text-embedding-3-small` (1536 dim) — barato, estándar de la industria, evita tener que regenerar el catálogo entero si se compara con un modelo distinto más adelante.
+- Auth del Gateway: en producción (deploy en Vercel) se resuelve solo vía OIDC, sin ninguna key. En desarrollo local hace falta `AI_GATEWAY_API_KEY` en `.env.local` (dashboard de Vercel → proyecto `leadia` → AI Gateway → API Keys) — **requiere una tarjeta cargada en el team correcto de Vercel** (el que es dueño del proyecto) para que el Gateway deje de responder 403 `customer_verification_required`, incluso usando solo el crédito gratis de $5/mes.
+- `agregarProducto` e `importarCsv` (`src/app/catalogo/acciones.ts`) generan el embedding de cada producto (nombre + descripción) antes de insertarlo — un solo llamado batch en el caso del CSV.
+- Falta para cerrar la Etapa 2: investigación de empresa (búsqueda web + resumen → tabla `prospecto`), matching RAG (embedding del perfil → similitud contra `producto.embedding` → top-K → explicación con LLM), e import de catálogo por PDF (extracción de texto + modelo chico que estructura filas + pantalla de revisión). Cuando se sume investigación/cotización, `llm.ts` suma una función `completar()` para generación de texto (mismo patrón de logging en `uso_ia`).
+
+Hay dos tenants de prueba cargados en la base (`demo@leadia.test` / `demo2@leadia.test`, contraseñas en el historial de este chat) — son solo para verificar aislamiento, se pueden borrar cuando se sume el primer cliente real. Se sumó también un tenant "Prueba Etapa2 Embeddings" para verificar el pipeline de embeddings por script (sin browser, la extensión de Chrome no conectó esa sesión) — mismo criterio, borrar cuando ya no haga falta.
 
 ---
 

@@ -67,6 +67,7 @@ export type Database = {
         Row: {
           created_at: string
           descripcion: string | null
+          embedding: string | null
           id: string
           imagen_url: string | null
           moneda: string
@@ -78,6 +79,7 @@ export type Database = {
         Insert: {
           created_at?: string
           descripcion?: string | null
+          embedding?: string | null
           id?: string
           imagen_url?: string | null
           moneda?: string
@@ -89,6 +91,7 @@ export type Database = {
         Update: {
           created_at?: string
           descripcion?: string | null
+          embedding?: string | null
           id?: string
           imagen_url?: string | null
           moneda?: string
@@ -100,6 +103,47 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "producto_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizacion"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      uso_ia: {
+        Row: {
+          costo_estimado: number
+          created_at: string
+          id: string
+          modelo: string
+          tarea: string
+          tenant_id: string
+          tokens_input: number
+          tokens_output: number
+        }
+        Insert: {
+          costo_estimado?: number
+          created_at?: string
+          id?: string
+          modelo: string
+          tarea: string
+          tenant_id: string
+          tokens_input?: number
+          tokens_output?: number
+        }
+        Update: {
+          costo_estimado?: number
+          created_at?: string
+          id?: string
+          modelo?: string
+          tarea?: string
+          tenant_id?: string
+          tokens_input?: number
+          tokens_output?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uso_ia_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "organizacion"

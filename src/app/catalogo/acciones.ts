@@ -3,6 +3,7 @@
 import Papa from "papaparse";
 import { revalidatePath } from "next/cache";
 import { crearCliente } from "@/utilidades/supabase/server";
+import { formatoVectorPg, generarEmbeddings } from "@/utilidades/llm";
 
 interface FilaCsv {
   nombre?: string;
@@ -21,6 +22,10 @@ async function tenantIdActual() {
   return usuario?.app_metadata.tenant_id as string;
 }
 
+function textoParaEmbedding(nombre: string, descripcion: string | null) {
+  return [nombre, descripcion].filter(Boolean).join(" ");
+}
+
 export async function agregarProducto(datosFormulario: FormData) {
   const supabase = await crearCliente();
   const tenantId = await tenantIdActual();
@@ -30,9 +35,18 @@ export async function agregarProducto(datosFormulario: FormData) {
   const precio = Number(datosFormulario.get("precio"));
   const moneda = (datosFormulario.get("moneda") as string) || "USD";
 
-  await supabase
-    .from("producto")
-    .insert({ tenant_id: tenantId, nombre, descripcion, precio, moneda });
+  const [embedding] = await generarEmbeddings(tenantId, "embedding_producto", [
+    textoParaEmbedding(nombre, descripcion),
+  ]);
+
+  await supabase.from("producto").insert({
+    tenant_id: tenantId,
+    nombre,
+    descripcion,
+    precio,
+    moneda,
+    embedding: formatoVectorPg(embedding),
+  });
 
   revalidatePath("/catalogo");
 }
@@ -65,8 +79,21 @@ export async function importarCsv(datosFormulario: FormData) {
     .filter((producto) => producto.nombre && !Number.isNaN(producto.precio));
 
   if (productos.length > 0) {
+    const embeddings = await generarEmbeddings(
+      tenantId,
+      "embedding_producto_csv",
+      productos.map((producto) =>
+        textoParaEmbedding(producto.nombre, producto.descripcion),
+      ),
+    );
+
     const supabase = await crearCliente();
-    await supabase.from("producto").insert(productos);
+    await supabase.from("producto").insert(
+      productos.map((producto, indice) => ({
+        ...producto,
+        embedding: formatoVectorPg(embeddings[indice]),
+      })),
+    );
   }
 
   revalidatePath("/catalogo");
