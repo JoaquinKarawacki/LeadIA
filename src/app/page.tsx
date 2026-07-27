@@ -19,6 +19,9 @@ export default async function Inicio() {
       <Link href="/catalogo" className="text-sm underline text-zinc-600 dark:text-zinc-400">
         Catálogo
       </Link>
+      <Link href="/prospectos" className="text-sm underline text-zinc-600 dark:text-zinc-400">
+        Prospectos
+      </Link>
       <form action={cerrarSesion}>
         <button
           type="submit"

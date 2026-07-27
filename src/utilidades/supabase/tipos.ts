@@ -39,6 +39,54 @@ export type Database = {
   }
   public: {
     Tables: {
+      evento: {
+        Row: {
+          created_at: string
+          entidad_id: string
+          entidad_tipo: string
+          id: string
+          metadata: Json
+          tenant_id: string
+          tipo: string
+          usuario_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          entidad_id: string
+          entidad_tipo: string
+          id?: string
+          metadata?: Json
+          tenant_id: string
+          tipo: string
+          usuario_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          entidad_id?: string
+          entidad_tipo?: string
+          id?: string
+          metadata?: Json
+          tenant_id?: string
+          tipo?: string
+          usuario_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "evento_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizacion"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "evento_usuario_id_fkey"
+            columns: ["usuario_id"]
+            isOneToOne: false
+            referencedRelation: "usuario"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organizacion: {
         Row: {
           created_at: string
@@ -103,6 +151,60 @@ export type Database = {
         Relationships: [
           {
             foreignKeyName: "producto_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizacion"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      prospecto: {
+        Row: {
+          asignado_a: string | null
+          created_at: string
+          embedding: string | null
+          estado: string
+          id: string
+          nombre_empresa: string
+          perfil_investigacion: string | null
+          tenant_id: string
+          updated_at: string
+          web: string | null
+        }
+        Insert: {
+          asignado_a?: string | null
+          created_at?: string
+          embedding?: string | null
+          estado?: string
+          id?: string
+          nombre_empresa: string
+          perfil_investigacion?: string | null
+          tenant_id: string
+          updated_at?: string
+          web?: string | null
+        }
+        Update: {
+          asignado_a?: string | null
+          created_at?: string
+          embedding?: string | null
+          estado?: string
+          id?: string
+          nombre_empresa?: string
+          perfil_investigacion?: string | null
+          tenant_id?: string
+          updated_at?: string
+          web?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "prospecto_asignado_a_fkey"
+            columns: ["asignado_a"]
+            isOneToOne: false
+            referencedRelation: "usuario"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "prospecto_tenant_id_fkey"
             columns: ["tenant_id"]
             isOneToOne: false
             referencedRelation: "organizacion"
