@@ -1,6 +1,7 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import { investigarEmpresa } from "@/utilidades/investigacion";
 import { crearCliente } from "@/utilidades/supabase/server";
 
@@ -29,4 +30,8 @@ export async function eliminarProspecto(idProspecto: string) {
   const supabase = await crearCliente();
   await supabase.from("prospecto").delete().eq("id", idProspecto);
   revalidatePath("/prospectos");
+}
+
+export async function pedirRecomendacion(idProspecto: string) {
+  redirect(`/prospectos?recomendarId=${idProspecto}`);
 }

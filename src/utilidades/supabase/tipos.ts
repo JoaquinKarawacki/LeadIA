@@ -293,6 +293,27 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      buscar_productos_similares: {
+        Args: { cantidad?: number; embedding_consulta: string }
+        Returns: {
+          created_at: string
+          descripcion: string | null
+          embedding: string | null
+          id: string
+          imagen_url: string | null
+          moneda: string
+          nombre: string
+          precio: number
+          tenant_id: string
+          updated_at: string
+        }[]
+        SetofOptions: {
+          from: "*"
+          to: "producto"
+          isOneToOne: false
+          isSetofReturn: true
+        }
+      }
       tenant_id_actual: { Args: never; Returns: string }
     }
     Enums: {
