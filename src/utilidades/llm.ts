@@ -1,5 +1,8 @@
-import { embedMany, generateText } from "ai";
+import { embedMany, generateObject, generateText } from "ai";
+import type { z } from "zod";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { crearCliente } from "@/utilidades/supabase/server";
+import type { Database } from "@/utilidades/supabase/tipos";
 
 const MODELO_EMBEDDING = "openai/text-embedding-3-small";
 const MODELO_CHICO = "openai/gpt-4o-mini";
@@ -20,6 +23,7 @@ async function registrarUsoIa(
   modelo: string,
   tokensInput: number,
   tokensOutput = 0,
+  clienteSupabase?: SupabaseClient<Database>,
 ) {
   const precios = PRECIOS_POR_MILLON_TOKENS[modelo] ?? {
     entrada: 0,
@@ -29,7 +33,11 @@ async function registrarUsoIa(
     (tokensInput / 1_000_000) * precios.entrada +
     (tokensOutput / 1_000_000) * precios.salida;
 
-  const supabase = await crearCliente();
+  // Sin cliente explícito, asume que corremos dentro de un request de Next.js
+  // con sesión (crearCliente() depende de cookies()). Los workflows/steps en
+  // background no tienen sesión de usuario, así que le pasan su propio
+  // cliente (service role) — ver completarEstructurado.
+  const supabase = clienteSupabase ?? (await crearCliente());
   await supabase.from("uso_ia").insert({
     tenant_id: tenantId,
     tarea,
@@ -79,6 +87,39 @@ export async function completar(
   );
 
   return text;
+}
+
+// Genera salida estructurada (JSON validado contra `esquema`) con el modelo
+// chico. `clienteSupabase` es obligatorio para llamadas desde un contexto sin
+// sesión de usuario (steps de un workflow en background) — ver registrarUsoIa.
+export async function completarEstructurado<T>(
+  tenantId: string,
+  tarea: string,
+  prompt: string,
+  esquema: z.ZodType<T>,
+  clienteSupabase?: SupabaseClient<Database>,
+): Promise<T> {
+  const { object, usage } = await generateObject({
+    model: MODELO_CHICO,
+    schema: esquema,
+    prompt,
+    // Sin reintentos propios del AI SDK: quien llama con clienteSupabase (un
+    // step de workflow en background) ya tiene su propio retry con backoff
+    // real (ver estructurarLote) — reintentar rápido acá solo desperdicia
+    // intentos contra un rate limit que no se libera en segundos.
+    maxRetries: clienteSupabase ? 0 : 2,
+  });
+
+  await registrarUsoIa(
+    tenantId,
+    tarea,
+    MODELO_CHICO,
+    usage.inputTokens ?? 0,
+    usage.outputTokens ?? 0,
+    clienteSupabase,
+  );
+
+  return object;
 }
 
 // pgvector espera el literal de texto "[0.1,0.2,...]" al insertar/actualizar

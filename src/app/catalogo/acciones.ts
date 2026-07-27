@@ -4,6 +4,7 @@ import Papa from "papaparse";
 import { revalidatePath } from "next/cache";
 import { crearCliente } from "@/utilidades/supabase/server";
 import { formatoVectorPg, generarEmbeddings } from "@/utilidades/llm";
+import { textoParaEmbedding } from "@/utilidades/producto";
 
 interface FilaCsv {
   nombre?: string;
@@ -20,10 +21,6 @@ async function tenantIdActual() {
   } = await supabase.auth.getUser();
 
   return usuario?.app_metadata.tenant_id as string;
-}
-
-function textoParaEmbedding(nombre: string, descripcion: string | null) {
-  return [nombre, descripcion].filter(Boolean).join(" ");
 }
 
 export async function agregarProducto(datosFormulario: FormData) {

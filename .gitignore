@@ -44,3 +44,8 @@ next-env.d.ts
 
 .vercel
 .env*
+/.swc
+
+# catálogos de prueba para el import por PDF (Etapa 2) — archivos de test
+# pesados, no van al repo.
+*.pdf

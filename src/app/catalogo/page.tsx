@@ -20,6 +20,13 @@ export default async function Catalogo() {
         </Link>
       </div>
 
+      <Link
+        href="/catalogo/importar"
+        className="text-sm underline text-zinc-600 dark:text-zinc-400"
+      >
+        Importar catálogo por PDF
+      </Link>
+
       <section className="flex flex-col gap-3">
         <h2 className="font-medium text-black dark:text-zinc-50">
           Agregar producto

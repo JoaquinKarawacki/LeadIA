@@ -87,6 +87,66 @@ export type Database = {
           },
         ]
       }
+      importacion_catalogo: {
+        Row: {
+          creado_por: string | null
+          created_at: string
+          error_mensaje: string | null
+          estado: string
+          id: string
+          lotes_productos: Json
+          nombre_archivo: string
+          pagina_actual: number
+          run_id: string | null
+          tenant_id: string
+          total_paginas: number
+          updated_at: string
+        }
+        Insert: {
+          creado_por?: string | null
+          created_at?: string
+          error_mensaje?: string | null
+          estado?: string
+          id?: string
+          lotes_productos?: Json
+          nombre_archivo: string
+          pagina_actual?: number
+          run_id?: string | null
+          tenant_id: string
+          total_paginas: number
+          updated_at?: string
+        }
+        Update: {
+          creado_por?: string | null
+          created_at?: string
+          error_mensaje?: string | null
+          estado?: string
+          id?: string
+          lotes_productos?: Json
+          nombre_archivo?: string
+          pagina_actual?: number
+          run_id?: string | null
+          tenant_id?: string
+          total_paginas?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "importacion_catalogo_creado_por_fkey"
+            columns: ["creado_por"]
+            isOneToOne: false
+            referencedRelation: "usuario"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "importacion_catalogo_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "organizacion"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       organizacion: {
         Row: {
           created_at: string
