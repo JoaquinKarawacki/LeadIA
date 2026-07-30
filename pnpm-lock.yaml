@@ -14,6 +14,9 @@ importers:
       '@supabase/supabase-js':
         specifier: ^2.110.7
         version: 2.110.7
+      '@thednp/dommatrix':
+        specifier: ^3.0.4
+        version: 3.0.4
       ai:
         specifier: ^7.0.37
         version: 7.0.37(zod@4.4.3)
@@ -1251,6 +1254,10 @@ packages:
 
   '@tailwindcss/postcss@4.3.3':
     resolution: {integrity: sha512-JTSZZGQi1AyKirbLN3azmjVzef92tcX7h+iSqPdaeStyFpGpDlKvvpxeOE8njhbUanbRwr3z8DyzhICWnMtQeg==}
+
+  '@thednp/dommatrix@3.0.4':
+    resolution: {integrity: sha512-xpKtQZqFOuAPfQDbePIh9f48YKfmULV7z9C+anPBSHiOG4P+T3ct7Cx2AZOoUeXbxiDkz7SONANy1bB7p2uysg==}
+    engines: {node: '>=20', pnpm: '>=8.6.0'}
 
   '@tokenizer/inflate@0.4.1':
     resolution: {integrity: sha512-2mAv+8pkG6GIZiF1kNg1jAjh27IDxEPKwdGul3snfztFerfPGI1LjDezZp3i7BElXompqEtPmoPx6c2wgtWsOA==}
@@ -5081,6 +5088,8 @@ snapshots:
       '@tailwindcss/oxide': 4.3.3
       postcss: 8.5.20
       tailwindcss: 4.3.3
+
+  '@thednp/dommatrix@3.0.4': {}
 
   '@tokenizer/inflate@0.4.1':
     dependencies:

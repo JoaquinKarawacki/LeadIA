@@ -1,5 +1,6 @@
 "use server";
 
+import "@/utilidades/polyfill-dommatrix";
 import { redirect } from "next/navigation";
 import { start } from "workflow/api";
 import { PDFParse } from "pdf-parse";
