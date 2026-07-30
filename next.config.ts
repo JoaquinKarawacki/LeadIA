@@ -7,6 +7,14 @@ const nextConfig: NextConfig = {
   // failed". Server-external evita que se empaquete y lo deja resolverse
   // como require() normal de Node, igual que corriendo el paquete suelto.
   serverExternalPackages: ["pdf-parse", "pdfjs-dist"],
+  experimental: {
+    serverActions: {
+      // Default de Next.js es 1mb — un catálogo en PDF real pesa mucho más.
+      // 100mb es el techo que soportan las Vercel Functions (no tiene sentido
+      // poner un límite más alto acá, la plataforma lo rechazaría antes).
+      bodySizeLimit: "100mb",
+    },
+  },
 };
 
 export default withWorkflow(nextConfig);
