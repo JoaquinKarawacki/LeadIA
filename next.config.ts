@@ -7,6 +7,14 @@ const nextConfig: NextConfig = {
   // failed". Server-external evita que se empaquete y lo deja resolverse
   // como require() normal de Node, igual que corriendo el paquete suelto.
   serverExternalPackages: ["pdf-parse", "pdfjs-dist"],
+  // El tracer de archivos de Vercel (@vercel/nft) no detecta el worker de
+  // pdfjs-dist porque pdf-parse lo resuelve con una ruta dinámica en runtime,
+  // no con un import estático — sin esto, el archivo existe en node_modules
+  // pero no se copia al bundle de la función ("Cannot find module .../
+  // pdf.worker.mjs" en producción, aunque local funcione con todo instalado).
+  outputFileTracingIncludes: {
+    "/catalogo/importar": ["./node_modules/pdfjs-dist/legacy/build/*.mjs"],
+  },
   experimental: {
     serverActions: {
       // Default de Next.js es 1mb — un catálogo en PDF real pesa mucho más.
