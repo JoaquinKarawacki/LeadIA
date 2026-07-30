@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { crearCliente } from "@/utilidades/supabase/server";
 import { subirCatalogoPdf } from "./acciones";
+import { BotonSubir } from "./boton-subir";
 
 export default async function ImportarCatalogo() {
   const supabase = await crearCliente();
@@ -27,20 +28,22 @@ export default async function ImportarCatalogo() {
         segundo plano — podés cerrar esta pantalla y volver más tarde.
       </p>
 
-      <form action={subirCatalogoPdf} className="flex items-center gap-2">
-        <input
-          type="file"
-          name="archivo"
-          accept="application/pdf"
-          required
-          className="text-sm text-zinc-600 dark:text-zinc-400"
-        />
-        <button
-          type="submit"
-          className="rounded bg-black px-3 py-2 text-white dark:bg-zinc-50 dark:text-black"
-        >
-          Subir
-        </button>
+      <form action={subirCatalogoPdf} className="flex flex-col gap-2">
+        <div className="flex items-center gap-2">
+          <input
+            type="file"
+            name="archivo"
+            accept="application/pdf"
+            required
+            className="text-sm text-zinc-600 dark:text-zinc-400"
+          />
+          <BotonSubir />
+        </div>
+        <p className="text-xs text-zinc-500 dark:text-zinc-500">
+          Con archivos grandes (decenas de MB), subir el archivo puede tardar
+          varios minutos según tu conexión — no cierres ni recargues la
+          página mientras el botón diga &quot;Subiendo…&quot;.
+        </p>
       </form>
 
       <section className="flex flex-col gap-2">
