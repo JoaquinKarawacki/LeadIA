@@ -1,9 +1,8 @@
 "use server";
 
-import "@/utilidades/polyfill-dommatrix";
 import { redirect } from "next/navigation";
 import { start } from "workflow/api";
-import { PDFParse } from "pdf-parse";
+import { extractText, getDocumentProxy } from "unpdf";
 import { crearCliente } from "@/utilidades/supabase/server";
 import { importarCatalogoPdfWorkflow } from "@/utilidades/flujos/importar-catalogo-pdf";
 
@@ -15,13 +14,12 @@ export async function subirCatalogoPdf(datosFormulario: FormData) {
   const tenantId = usuario!.app_metadata.tenant_id as string;
 
   const archivo = datosFormulario.get("archivo") as File;
-  const buffer = Buffer.from(await archivo.arrayBuffer());
+  const buffer = new Uint8Array(await archivo.arrayBuffer());
 
-  const parser = new PDFParse({ data: buffer });
-  const resultado = await parser.getText();
-  await parser.destroy();
-
-  const paginasTexto = resultado.pages.map((pagina) => pagina.text);
+  const documento = await getDocumentProxy(buffer);
+  const { text: paginasTexto } = await extractText(documento, {
+    mergePages: false,
+  });
 
   const { data: importacion, error } = await supabase
     .from("importacion_catalogo")
